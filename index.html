@@ -60,14 +60,11 @@
     <script src="js/config.local.js"></script>
     <script src="js/i18n.js"></script>
     <script>
-        // Инициализация Supabase
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
-
-        // Получаем данные пользователя из Telegram WebApp
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Разворачиваем на весь экран
+        tg.expand();
 
-        // Для тестов в браузере (если зашел не из Telegram, даем фейкового юзера)
+        // Фейковый юзер для браузера (если ты не в ТГ)
         const user = tg.initDataUnsafe?.user || {
             id: 123456789,
             first_name: "Тестовый",
@@ -76,19 +73,26 @@
         };
 
         document.addEventListener("DOMContentLoaded", async () => {
-            // Приветствие
+            console.log("Страница загружена, проверяем юзера:", user.id);
             document.getElementById("welcome-title").innerText = `Привет, ${user.first_name}! 👋`;
+            const statusText = document.getElementById("status-text");
 
             try {
-                // 1. Проверяем или регистрируем пользователя в БД
+                // 1. Проверяем юзера
                 let { data: existingUser, error: fetchError } = await supabaseClient
                     .from('users')
                     .select('*')
                     .eq('telegram_id', user.id)
                     .single();
 
+                if (fetchError && fetchError.code !== 'PGRST116') {
+                    console.error("Ошибка базы данных:", fetchError);
+                    statusText.innerText = "Ошибка: " + fetchError.message;
+                    return;
+                }
+
                 if (!existingUser) {
-                    // Если пользователя нет — добавляем
+                    console.log("Юзер не найден, создаем...");
                     await supabaseClient.from('users').insert([{
                         telegram_id: user.id,
                         first_name: user.first_name,
@@ -97,59 +101,39 @@
                     }]);
                 }
 
-                // 2. Проверяем доступы пользователя к курсам
+                // 2. Проверяем доступы
+                console.log("Проверяем доступы для ID:", user.id);
                 let { data: accesses, error: accessError } = await supabaseClient
                     .from('user_subject_access')
                     .select('subject_id')
                     .eq('user_id', user.id);
 
+                if (accessError) throw accessError;
+
                 const actionContainer = document.getElementById("action-container");
-                const statusText = document.getElementById("status-text");
+                actionContainer.innerHTML = ""; // Чистим перед заполнением
 
                 if (accesses && accesses.length > 0) {
-                    // У пользователя ЕСТЬ доступы
-                    statusText.innerText = `У тебя открыт доступ к ${accesses.length} предмет(ам). Отличной подготовки! 🚀`;
-                    
+                    statusText.innerText = `У тебя открыт доступ к ${accesses.length} предмет(ам).`;
                     const btn = document.createElement("a");
                     btn.href = "courses.html";
                     btn.className = "btn";
                     btn.innerText = "🎓 Перейти к курсам";
                     actionContainer.appendChild(btn);
                 } else {
-                    // У пользователя НЕТ доступов
-                    statusText.innerText = "У тебя пока нет активных доступов к курсам. Напиши нам, чтобы открыть подготовку!";
-                    
+                    console.log("Доступов нет.");
+                    statusText.innerText = "У тебя пока нет активных доступов.";
+                    // Добавляем кнопки связи
                     const waBtn = document.createElement("a");
-                    waBtn.href = `https://wa.me/${CONFIG.CONTACT_WHATSAPP}?text=Здравствуйте! Хочу купить доступ к курсам ЕНТ. Мой Telegram ID: ${user.id}`;
+                    waBtn.href = `https://wa.me/${CONFIG.CONTACT_WHATSAPP}`;
                     waBtn.className = "btn btn-wa";
                     waBtn.innerText = "💬 Написать в WhatsApp";
                     actionContainer.appendChild(waBtn);
-
-                    const tgBtn = document.createElement("a");
-                    tgBtn.href = `https://t.me/${CONFIG.CONTACT_TELEGRAM}`;
-                    tgBtn.className = "btn btn-tg";
-                    tgBtn.innerText = "✈️ Написать в Telegram";
-                    actionContainer.appendChild(tgBtn);
-                }
-
-                // 3. Подгружаем статистику тестов
-                let { data: results } = await supabaseClient
-                    .from('test_results')
-                    .select('*')
-                    .eq('user_id', user.id);
-
-                if (results && results.length > 0) {
-                    document.getElementById("tests-passed").innerText = results.length;
-                    let totalPercent = results.reduce((acc, curr) => acc + (curr.score / curr.max_score) * 100, 0);
-                    let avg = Math.round(totalPercent / results.length);
-                    document.getElementById("avg-score").innerText = `${avg}%`;
                 }
 
             } catch (err) {
-                console.error("Ошибка при загрузке:", err);
-                const debugBox = document.getElementById("debug-info");
-                debugBox.classList.remove("hidden");
-                debugBox.innerText = "Ошибка подключения к базе: " + err.message;
+                console.error("Критическая ошибка:", err);
+                statusText.innerText = "Ошибка загрузки: " + err.message;
             }
         });
     </script>
