@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UBT Platform</title>
     
-    <!-- Подключаем Telegram WebApp SDK -->
+    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Подключаем Supabase SDK -->
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <link rel="stylesheet" href="css/style.css">
@@ -17,55 +17,31 @@
     <div class="container">
         <div class="page-wrapper">
             
-            <!-- Карточка приветствия и статуса подписки -->
             <div class="card">
                 <h2 id="welcome-title">Загрузка...</h2>
-                <p id="status-text">Проверяем статус подписки...</p>
+                <p id="status-text">Проверяем данные...</p>
                 
-                <div id="action-container">
-                    <!-- Сюда динамически добавится кнопка перехода к курсам или кнопки связи -->
+                <div id="action-container" style="margin-top: 20px;">
+                    <!-- Сюда динамически встанет нужная кнопка или кнопки связи -->
                 </div>
             </div>
 
-            <!-- Статистика и лента активности (для мотивации) -->
-            <div class="news-section">
-                <div class="news-title">📊 Твоя статистика</div>
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <span class="stat-num" id="tests-passed">0</span>
-                        <span class="stat-label">Пройдено тестов</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-num" id="avg-score">0%</span>
-                        <span class="stat-label">Средний балл</span>
-                    </div>
-                </div>
-
-                <div class="news-title" style="margin-top: 20px;">📰 Важные новости</div>
-                <div id="news-container">
-                    <div class="news-card promo-card">
-                        <div class="news-tag">АКЦИЯ / ЕНТ-2026</div>
-                        <div class="news-content">Готовься по всем предметам без ограничений. При покупке полного доступа — обновление материалов бесплатно!</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Отладка (если что-то пойдет не так) -->
-            <div id="debug-info" class="debug-box hidden"></div>
+            <!-- Отладка -->
+            <div id="debug-info" class="debug-box hidden" style="margin-top: 15px;"></div>
 
         </div>
     </div>
 
-    <!-- Подключаем наши скрипты -->
+    <!-- Конфиг -->
     <script src="js/config.local.js"></script>
-    <script src="js/i18n.js"></script>
+    
     <script>
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Фейковый юзер для браузера (если ты не в ТГ)
-        const user = tg.initDataUnsafe?.user || {
+        const telegramUser = tg.initDataUnsafe?.user;
+        const user = (telegramUser && telegramUser.id) ? telegramUser : {
             id: 123456789,
             first_name: "Тестовый",
             last_name: "Юзер",
@@ -73,36 +49,33 @@
         };
 
         document.addEventListener("DOMContentLoaded", async () => {
-            console.log("Страница загружена, проверяем юзера:", user.id);
-            document.getElementById("welcome-title").innerText = `Привет, ${user.first_name}! 👋`;
+            const welcomeTitle = document.getElementById("welcome-title");
             const statusText = document.getElementById("status-text");
+            const actionContainer = document.getElementById("action-container");
 
             try {
-                // 1. Проверяем юзера
+                // 1. Автоматическая запись / проверка юзера в базе данных
                 let { data: existingUser, error: fetchError } = await supabaseClient
                     .from('users')
                     .select('*')
                     .eq('telegram_id', user.id)
                     .single();
 
-                if (fetchError && fetchError.code !== 'PGRST116') {
-                    console.error("Ошибка базы данных:", fetchError);
-                    statusText.innerText = "Ошибка: " + fetchError.message;
-                    return;
-                }
-
                 if (!existingUser) {
-                    console.log("Юзер не найден, создаем...");
-                    await supabaseClient.from('users').insert([{
+                    let { error: insertError } = await supabaseClient.from('users').insert([{
                         telegram_id: user.id,
-                        first_name: user.first_name,
+                        first_name: user.first_name || '',
                         last_name: user.last_name || '',
                         username: user.username || ''
                     }]);
+
+                    if (insertError) throw insertError;
                 }
 
-                // 2. Проверяем доступы
-                console.log("Проверяем доступы для ID:", user.id);
+                // Персональное приветствие по имени
+                welcomeTitle.innerText = `Привет, ${user.first_name}! 👋`;
+
+                // 2. Проверяем доступы пользователя к предметам
                 let { data: accesses, error: accessError } = await supabaseClient
                     .from('user_subject_access')
                     .select('subject_id')
@@ -110,30 +83,43 @@
 
                 if (accessError) throw accessError;
 
-                const actionContainer = document.getElementById("action-container");
-                actionContainer.innerHTML = ""; // Чистим перед заполнением
+                actionContainer.innerHTML = "";
 
                 if (accesses && accesses.length > 0) {
-                    statusText.innerText = `У тебя открыт доступ к ${accesses.length} предмет(ам).`;
-                    const btn = document.createElement("a");
-                    btn.href = "courses.html";
-                    btn.className = "btn";
-                    btn.innerText = "🎓 Перейти к курсам";
-                    actionContainer.appendChild(btn);
+                    // У пользователя ЕСТЬ доступ
+                    statusText.innerText = `У тебя открыт доступ к предметам. Отличной подготовки! 🚀`;
+
+                    const btnCourses = document.createElement("a");
+                    btnCourses.href = "courses.html";
+                    btnCourses.className = "btn";
+                    btnCourses.innerText = "🎓 Перейти к курсам";
+                    actionContainer.appendChild(btnCourses);
+
                 } else {
-                    console.log("Доступов нет.");
-                    statusText.innerText = "У тебя пока нет активных доступов.";
-                    // Добавляем кнопки связи
+                    // У пользователя НЕТ доступа
+                    statusText.innerText = "У тебя пока нет доступа к курсам. Приобрести доступ можно, написав нам в Telegram или WhatsApp:";
+
                     const waBtn = document.createElement("a");
-                    waBtn.href = `https://wa.me/${CONFIG.CONTACT_WHATSAPP}`;
+                    waBtn.href = `https://wa.me/${CONFIG.CONTACT_WHATSAPP}?text=Здравствуйте! Хочу приобрести доступ к платформе ЕНТ. Мой Telegram ID: ${user.id}`;
                     waBtn.className = "btn btn-wa";
                     waBtn.innerText = "💬 Написать в WhatsApp";
                     actionContainer.appendChild(waBtn);
+
+                    const tgBtn = document.createElement("a");
+                    tgBtn.href = `https://t.me/${CONFIG.CONTACT_TELEGRAM}`;
+                    tgBtn.className = "btn btn-tg";
+                    tgBtn.innerText = "✈️ Написать в Telegram";
+                    tgBtn.style.marginTop = "10px";
+                    actionContainer.appendChild(tgBtn);
                 }
 
             } catch (err) {
-                console.error("Критическая ошибка:", err);
-                statusText.innerText = "Ошибка загрузки: " + err.message;
+                console.error("Ошибка:", err);
+                welcomeTitle.innerText = "Ошибка";
+                statusText.innerText = "Не удалось загрузить данные.";
+                const debugBox = document.getElementById("debug-info");
+                debugBox.classList.remove("hidden");
+                debugBox.innerText = err.message;
             }
         });
     </script>
