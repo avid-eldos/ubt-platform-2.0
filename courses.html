@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои предметы - UBT Platform</title>
+    <title>UBT Platform</title>
     
+    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <link rel="stylesheet" href="css/style.css">
@@ -16,33 +18,65 @@
         <div class="page-wrapper">
             
             <div class="card">
-                <h2>📚 Мои предметы</h2>
-                <p id="courses-subtitle">Выбери предмет для начала подготовки</p>
+                <h2 id="welcome-title">Загрузка...</h2>
+                <p id="status-text">Проверяем данные...</p>
+                
+                <div id="action-container" style="margin-top: 20px;">
+                    <!-- Сюда динамически встанет нужная кнопка или кнопки связи -->
+                </div>
             </div>
 
-            <!-- Список доступных предметов -->
-            <div id="subjects-container">
-                <!-- Сюда динамически загрузятся карточки предметов -->
-            </div>
-
-            <a href="index.html" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px;">⬅️ На главную</a>
+            <!-- Отладка -->
+            <div id="debug-info" class="debug-box hidden" style="margin-top: 15px;"></div>
 
         </div>
     </div>
 
-    <script src="js/config.js"></script>
+    <!-- Конфиг (для локальной разработки подключен config.local.js) -->
+    <script src="js/config.local.js"></script>
+    
     <script>
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        const user = tg.initDataUnsafe?.user || { id: 123456789 };
+        // Получаем юзера из Telegram или используем дефолтного для браузера
+        const telegramUser = tg.initDataUnsafe?.user;
+        const user = (telegramUser && telegramUser.id) ? telegramUser : {
+            id: 123456789,
+            first_name: "Тестовый",
+            last_name: "Юзер",
+            username: "test_user"
+        };
 
         document.addEventListener("DOMContentLoaded", async () => {
-            const container = document.getElementById("subjects-container");
+            const welcomeTitle = document.getElementById("welcome-title");
+            const statusText = document.getElementById("status-text");
+            const actionContainer = document.getElementById("action-container");
 
             try {
-                // 1. Получаем ID предметов, к которым у пользователя есть доступ
+                // 1. Автоматическая запись / проверка юзера в базе данных
+                let { data: existingUser, error: fetchError } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('telegram_id', user.id)
+                    .single();
+
+                if (!existingUser) {
+                    let { error: insertError } = await supabaseClient.from('users').insert([{
+                        telegram_id: user.id,
+                        first_name: user.first_name || '',
+                        last_name: user.last_name || '',
+                        username: user.username || ''
+                    }]);
+
+                    if (insertError) throw insertError;
+                }
+
+                // Выводим персональное приветствие по имени
+                welcomeTitle.innerText = `Привет, ${user.first_name}! 👋`;
+
+                // 2. Проверяем доступы пользователя к предметам
                 let { data: accesses, error: accessError } = await supabaseClient
                     .from('user_subject_access')
                     .select('subject_id')
@@ -50,45 +84,43 @@
 
                 if (accessError) throw accessError;
 
-                if (!accesses || accesses.length === 0) {
-                    container.innerHTML = `<div class="card"><p>У тебя пока нет купленных предметов.</p></div>`;
-                    return;
+                actionContainer.innerHTML = "";
+
+                if (accesses && accesses.length > 0) {
+                    // У пользователя ЕСТЬ доступы
+                    statusText.innerText = `У тебя открыт доступ к предметам. Отличной подготовки! 🚀`;
+
+                    const btnCourses = document.createElement("a");
+                    btnCourses.href = "courses.html";
+                    btnCourses.className = "btn";
+                    btnCourses.innerText = "🎓 Перейти к курсам";
+                    actionContainer.appendChild(btnCourses);
+
+                } else {
+                    // У пользователя НЕТ доступов
+                    statusText.innerText = "У тебя пока нет доступа к курсам. Приобрести доступ можно написав нам в Telegram или WhatsApp:";
+
+                    const waBtn = document.createElement("a");
+                    waBtn.href = `https://wa.me/${CONFIG.CONTACT_WHATSAPP}?text=Здравствуйте! Хочу приобрести доступ к платформе ЕНТ. Мой Telegram ID: ${user.id}`;
+                    waBtn.className = "btn btn-wa";
+                    waBtn.innerText = "💬 Написать в WhatsApp";
+                    actionContainer.appendChild(waBtn);
+
+                    const tgBtn = document.createElement("a");
+                    tgBtn.href = `https://t.me/${CONFIG.CONTACT_TELEGRAM}`;
+                    tgBtn.className = "btn btn-tg";
+                    tgBtn.innerText = "✈️ Написать в Telegram";
+                    tgBtn.style.marginTop = "10px";
+                    actionContainer.appendChild(tgBtn);
                 }
 
-                const subjectIds = accesses.map(a => a.subject_id);
-
-                // 2. Получаем сами предметы из таблицы subjects
-                let { data: subjects, error: subjError } = await supabaseClient
-                    .from('subjects')
-                    .select('*')
-                    .in('id', subjectIds);
-
-                if (subjError) throw subjError;
-
-                // 3. Рисуем карточки предметов
-                container.innerHTML = "";
-                subjects.forEach(sub => {
-                    const card = document.createElement("div");
-                    card.className = "card";
-                    card.style.marginBottom = "12px";
-                    card.style.textAlign = "left";
-                    card.style.display = "flex";
-                    card.style.justifyContent = "space-between";
-                    card.style.alignItems = "center";
-
-                    card.innerHTML = `
-                        <div>
-                            <h3 style="margin: 0 0 5px 0;">${sub.title_ru}</h3>
-                            <span style="font-size: 13px; color: var(--tg-theme-hint-color);">${sub.title_kz}</span>
-                        </div>
-                        <a href="lessons.html?subject_id=${sub.id}" class="btn" style="width: auto; margin: 0; padding: 10px 16px;">Открыть</a>
-                    `;
-                    container.appendChild(card);
-                });
-
             } catch (err) {
-                console.error("Ошибка загрузки предметов:", err);
-                container.innerHTML = `<div class="card" style="color: red;">Не удалось загрузить предметы.</div>`;
+                console.error("Ошибка:", err);
+                welcomeTitle.innerText = "Ошибка";
+                statusText.innerText = "Не удалось загрузить данные.";
+                const debugBox = document.getElementById("debug-info");
+                debugBox.classList.remove("hidden");
+                debugBox.innerText = err.message;
             }
         });
     </script>
