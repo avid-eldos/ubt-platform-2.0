@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои курсы - UBT Platform</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div class="page-wrapper">
+            
+            <div class="card">
+                <h2>📚 Мои курсы</h2>
+                <p id="courses-subtitle" style="color: var(--tg-theme-hint-color, #888); margin-top: 5px;">Список предметов, к которым у тебя открыт доступ</p>
+            </div>
+
+            <!-- Список доступных предметов -->
+            <div id="subjects-container">
+                <!-- Сюда динамически загрузятся карточки -->
+            </div>
+
+            <a href="index.html" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px;">⬅️ На главную</a>
+
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Определяем ID пользователя (так же как на главной)
+        const telegramUser = tg.initDataUnsafe?.user;
+        const user = (telegramUser && telegramUser.id) ? telegramUser : { id: 123456789 };
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const container = document.getElementById("subjects-container");
+
+            try {
+                // 1. Получаем список ID предметов, к которым у юзера есть доступ
+                let { data: accesses, error: accessError } = await supabaseClient
+                    .from('user_subject_access')
+                    .select('subject_id')
+                    .eq('user_id', user.id);
+
+                if (accessError) throw accessError;
+
+                if (!accesses || accesses.length === 0) {
+                    container.innerHTML = `<div class="card"><p>У тебя пока нет купленных предметов.</p></div>`;
+                    return;
+                }
+
+                const subjectIds = accesses.map(a => a.subject_id);
+
+                // 2. Загружаем детали только этих предметов из таблицы subjects
+                let { data: subjects, error: subjError } = await supabaseClient
+                    .from('subjects')
+                    .select('*')
+                    .in('id', subjectIds);
+
+                if (subjError) throw subjError;
+
+                // 3. Рисуем карточки предметов
+                container.innerHTML = "";
+                subjects.forEach(sub => {
+                    const card = document.createElement("div");
+                    card.className = "card";
+                    card.style.marginBottom = "12px";
+                    card.style.textAlign = "left";
+                    card.style.display = "flex";
+                    card.style.justifyContent = "space-between";
+                    card.style.alignItems = "center";
+
+                    card.innerHTML = `
+                        <div>
+                            <h3 style="margin: 0 0 4px 0; font-size: 16px;">${sub.title_ru}</h3>
+                            <span style="font-size: 13px; color: var(--tg-theme-hint-color);">${sub.title_kz}</span>
+                        </div>
+                        <a href="lessons.html?subject_id=${sub.id}" class="btn" style="width: auto; margin: 0; padding: 10px 16px; font-size: 14px;">Открыть</a>
+                    `;
+                    container.appendChild(card);
+                });
+
+            } catch (err) {
+                console.error("Ошибка загрузки предметов:", err);
+                container.innerHTML = `<div class="card" style="color: red;">Не удалось загрузить список курсов.</div>`;
+            }
+        });
+    </script>
+</body>
+</html>
