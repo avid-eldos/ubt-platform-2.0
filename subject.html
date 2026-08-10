@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Предмет - UBT Platform</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div class="page-wrapper">
+            
+            <div class="card" style="text-align: center;">
+                <h2 id="subject-title">Загрузка предмета...</h2>
+                <p id="subject-subtitle" style="color: var(--tg-theme-hint-color, #888); font-size: 14px; margin-top: 5px;"></p>
+            </div>
+
+            <!-- Две главные кнопки: Лекции и Тест -->
+            <div id="actions-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+                <a id="btn-lessons" href="#" class="btn" style="text-align: center; text-decoration: none;">📖 Лекции и теория</a>
+                <a id="btn-test" href="#" class="btn" style="text-align: center; text-decoration: none; background-color: #28a745;">📝 Общий тест по предмету</a>
+            </div>
+
+            <a href="courses.html" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px; text-align: center; text-decoration: none;">⬅️ К списку предметов</a>
+
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Получаем ID предмета из URL (например: subject.html?subject_id=4)
+        const urlParams = new URLSearchParams(window.location.search);
+        const subjectId = urlParams.get('subject_id');
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const titleEl = document.getElementById("subject-title");
+            const subtitleEl = document.getElementById("subject-subtitle");
+            const btnLessons = document.getElementById("btn-lessons");
+            const btnTest = document.getElementById("btn-test");
+
+            if (!subjectId) {
+                titleEl.innerText = "Ошибка";
+                subtitleEl.innerText = "Предмет не выбран.";
+                return;
+            }
+
+            try {
+                // Получаем информацию о предмете из базы
+                let { data: subject, error } = await supabaseClient
+                    .from('subjects')
+                    .select('*')
+                    .eq('id', subjectId)
+                    .single();
+
+                if (error) throw error;
+
+                if (subject) {
+                    titleEl.innerText = subject.title_ru;
+                    subtitleEl.innerText = subject.title_kz || "";
+                    
+                    // Настраиваем ссылки для кнопок
+                    btnLessons.href = `lessons.html?subject_id=${subject.id}`;
+                    btnTest.href = `test.html?subject_id=${subject.id}`;
+                } else {
+                    titleEl.innerText = "Предмет не найден";
+                }
+
+            } catch (err) {
+                console.error("Ошибка загрузки предмета:", err);
+                titleEl.innerText = "Ошибка";
+                subtitleEl.innerText = "Не удалось загрузить данные предмета.";
+            }
+        });
+    </script>
+</body>
+</html>
