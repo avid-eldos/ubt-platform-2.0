@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лекция - UBT Platform</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <div class="page-wrapper">
+            
+            <!-- Шапка лекции -->
+            <div class="card" style="text-align: left;">
+                <span style="font-size: 12px; color: var(--tg-theme-hint-color, #888);">Тема лекции</span>
+                <h2 style="margin: 5px 0 10px 0; font-size: 20px;">Здесь будет название твоей лекции</h2>
+                <div style="display: flex; gap: 10px; font-size: 13px; color: var(--tg-theme-hint-color);">
+                    <span>⏱️ 10 мин чтения</span>
+                </div>
+            </div>
+
+            <!-- Основной текст лекции -->
+            <div class="card" style="text-align: left; line-height: 1.6;">
+                
+                <h3>1. Основные понятия</h3>
+                <p>Здесь пишется текст лекции, теория, определения и важные исторические даты или формулы.</p>
+
+                <h3 style="margin-top: 20px;">2. Главные особенности</h3>
+                <p>Ты можешь использовать стандартные теги форматирования:</p>
+                <ul style="padding-left: 20px; margin-top: 5px;">
+                    <li><strong>Жирный текст</strong> для выделения терминов.</li>
+                    <li>Списки для удобного запоминания.</li>
+                </ul>
+
+                <!-- Пример блока с подсказкой / важным примечанием -->
+                <div style="background: rgba(0,0,0,0.03); border-left: 4px solid var(--tg-theme-button-color, #2481cc); padding: 10px 15px; margin-top: 20px; border-radius: 4px;">
+                    <strong style="display: block; margin-bottom: 4px;">💡 Важно для ЕНТ:</strong>
+                    Этот блок часто встречается в вопросах тестирования. Обрати на него особое внимание.
+                </div>
+
+            </div>
+
+            <!-- Кнопки навигациинизу -->
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <a href="javascript:history.back()" class="btn" style="background-color: var(--tg-theme-hint-color, #888); text-decoration: none; text-align: center;">⬅️ Назад</a>
+                <!-- Можешь добавить ссылку на тест по этой теме, если нужно -->
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+    </script>
+</body>
+</html>
