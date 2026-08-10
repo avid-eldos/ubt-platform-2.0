@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Темы и тесты - UBT Platform</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .lesson-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+        .lesson-row:last-child {
+            border-bottom: none;
+        }
+        .lesson-info {
+            flex: 1;
+            text-align: left;
+        }
+        .lesson-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .action-btn {
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            text-align: center;
+        }
+        .btn-theory {
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+        }
+        .btn-quiz {
+            background-color: #28a745;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="page-wrapper">
+            
+            <div class="card" style="text-align: center;">
+                <h2 id="subject-title">Загрузка тем...</h2>
+                <p style="color: var(--tg-theme-hint-color, #888); font-size: 13px; margin-top: 4px;">Изучай теорию и закрепляй тестами</p>
+            </div>
+
+            <!-- Список лекций и тестов по темам -->
+            <div class="card" id="lessons-container" style="text-align: left; padding: 10px 15px;">
+                <p style="text-align: center; color: var(--tg-theme-hint-color);">Загрузка списка лекций...</p>
+            </div>
+
+            <a id="back-btn" href="#" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px; text-align: center; text-decoration: none;">⬅️ Назад к предмету</a>
+
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const subjectId = urlParams.get('subject_id');
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const container = document.getElementById("lessons-container");
+            const titleEl = document.getElementById("subject-title");
+            const backBtn = document.getElementById("back-btn");
+
+            if (!subjectId) {
+                titleEl.innerText = "Ошибка";
+                container.innerHTML = "<p>Предмет не указан.</p>";
+                return;
+            }
+
+            backBtn.href = `subject.html?subject_id=${subjectId}`;
+
+            try {
+                // 1. Получаем название предмета
+                let { data: subject } = await supabaseClient
+                    .from('subjects')
+                    .select('*')
+                    .eq('id', subjectId)
+                    .single();
+
+                if (subject) {
+                    titleEl.innerText = subject.title_ru;
+                }
+
+                // 2. Получаем лекции для этого предмета
+                let { data: lessons, error } = await supabaseClient
+                    .from('lessons')
+                    .select('*')
+                    .eq('subject_id', subjectId)
+                    .order('order_num', { ascending: true });
+
+                if (error) throw error;
+
+                if (!lessons || lessons.length === 0) {
+                    container.innerHTML = `<p style="text-align: center; padding: 15px; color: var(--tg-theme-hint-color);">В этом предмете пока нет лекций.</p>`;
+                    return;
+                }
+
+                container.innerHTML = "";
+                lessons.forEach((lesson, index) => {
+                    const row = document.createElement("div");
+                    row.className = "lesson-row";
+
+                    row.innerHTML = `
+                        <div class="lesson-info">
+                            <span style="font-size: 11px; color: var(--tg-theme-hint-color);">Тема ${index + 1}</span>
+                            <div style="font-size: 15px; font-weight: 500; color: var(--tg-theme-text-color, #000);">${lesson.title}</div>
+                        </div>
+                        <div class="lesson-actions">
+                            <a href="content/${subjectId}/lesson_${lesson.id}.html" class="action-btn btn-theory">📖 Терия</a>
+                            <a href="test.html?lesson_id=${lesson.id}" class="action-btn btn-quiz">📝 Тест</a>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                });
+
+            } catch (err) {
+                console.error("Ошибка:", err);
+                container.innerHTML = `<p style="color: red; text-align: center;">Не удалось загрузить темы.</p>`;
+            }
+        });
+    </script>
+</body>
+</html>
