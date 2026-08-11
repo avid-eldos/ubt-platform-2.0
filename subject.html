@@ -64,8 +64,8 @@
                 if (error) throw error;
 
                 if (subject) {
-                    titleEl.innerText = subject.title_ru;
-                    subtitleEl.innerText = subject.title_kz || "";
+                    titleEl.innerText = subject.title;
+                    subtitleEl.innerText = subject.title || "";
                     
                     // Настраиваем ссылки для кнопок
                     btnLessons.href = `lessons.html?subject_id=${subject.id}`;

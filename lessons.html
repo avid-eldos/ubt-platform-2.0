@@ -99,7 +99,7 @@
                     .single();
 
                 if (subject) {
-                    titleEl.innerText = subject.title_ru;
+                    titleEl.innerText = subject.title;
                 }
 
                 // 2. Получаем лекции для этого предмета
@@ -127,7 +127,7 @@
                             <div style="font-size: 15px; font-weight: 500; color: var(--tg-theme-text-color, #000);">${lesson.title}</div>
                         </div>
                         <div class="lesson-actions">
-                            <a href="content/${subjectId}/lesson_${lesson.id}.html" class="action-btn btn-theory">📖 Терия</a>
+                            <a href="content/${subjectId}/lesson_${lesson.id}.html" class="action-btn btn-theory">📖 Теория</a>
                             <a href="test.html?lesson_id=${lesson.id}" class="action-btn btn-quiz">📝 Тест</a>
                         </div>
                     `;
