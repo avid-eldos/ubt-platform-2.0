@@ -56,5 +56,25 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
     </script>
+    <script>
+        // Блокировка контекстного меню (правой кнопки мыши)
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // Блокировка горячих клавиш для копирования (Ctrl+C, Ctrl+U, Ctrl+S и т.д.)
+        document.addEventListener('keydown', event => {
+            if (
+                event.ctrlKey && (
+                    event.key === 'c' || 
+                    event.key === 'u' || 
+                    event.key === 's' || 
+                    event.key === 'a'
+                ) ||
+                event.key === 'F12'
+            ) {
+                event.preventDefault();
+                alert("Копирование материалов защищено.");
+            }
+        });
+    </script>
 </body>
 </html>
