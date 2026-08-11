@@ -81,32 +81,74 @@
         document.addEventListener("DOMContentLoaded", () => {
             const tg = window.Telegram.WebApp;
             
-            // Получаем ID пользователя или ставим заглушку, если открыто в обычном браузере
+            // Получаем ID пользователя
             let userId = "Guest";
             let username = "";
             
+            // Для тестирования на ПК без Telegram, раскомментируй строчку ниже:
+            // userId = "12345678"; username = "@test_user";
+
             if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
                 userId = tg.initDataUnsafe.user.id;
                 username = tg.initDataUnsafe.user.username ? `@${tg.initDataUnsafe.user.username}` : "";
             }
 
-            // Создаем контейнер для водяных знаков
+            // Создаем контейнер
             const watermarkContainer = document.createElement("div");
             watermarkContainer.className = "watermark-container";
-
-            // Заполняем экран повторяющимся текстом (например, 20 штук)
-            // Текст содержит ID пользователя
-            const watermarkText = `ID: ${userId} ${username}`;
+            watermarkContainer.id = "watermark-layer";
             
-            for (let i = 0; i < 25; i++) {
-                const item = document.createElement("div");
-                item.className = "watermark-item";
-                item.innerText = watermarkText;
-                watermarkContainer.appendChild(item);
+            document.body.appendChild(watermarkContainer);
+            
+            // Функция для заполнения сетки
+            function fillWatermarks() {
+                watermarkContainer.innerHTML = ''; // Очищаем перед перерисовкой
+                
+                // Текст водяного знака
+                const watermarkText = `ID: ${userId} ${username}`;
+                
+                // Создаем временный элемент для замера размера одного знака
+                const tempItem = document.createElement("div");
+                tempItem.className = "watermark-item";
+                tempItem.style.visibility = "hidden"; // Скрываем, но рендерим для замера
+                tempItem.innerText = watermarkText;
+                document.body.appendChild(tempItem);
+                
+                // Получаем реальный размер одного знака с учетом паддингов и поворота
+                // Используем boundingClientRect, так как элемент повернут
+                const itemRect = tempItem.getBoundingClientRect();
+                const itemWidth = itemRect.width + 40; // Добавляем немного отступа между сеткой
+                const itemHeight = itemRect.height + 20;
+                
+                document.body.removeChild(tempItem); // Удаляем временный элемент
+
+                // Вычисляем, сколько элементов помещается по ширине и высоте
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+                
+                const cols = Math.ceil(screenWidth / itemWidth) + 1;
+                const rows = Math.ceil(screenHeight / itemHeight) + 1;
+                
+                const totalItems = cols * rows;
+
+                // Заполняем контейнер
+                for (let i = 0; i < totalItems; i++) {
+                    const item = document.createElement("div");
+                    item.className = "watermark-item";
+                    item.innerText = watermarkText;
+                    watermarkContainer.appendChild(item);
+                }
             }
 
-            // Добавляем сетку водяных знаков на страницу
-            document.body.appendChild(watermarkContainer);
+            // Заполняем при загрузке
+            fillWatermarks();
+
+            // Перерисовываем при изменении размера окна (например, при повороте телефона или растягивании окна на ПК)
+            let resizeTimeout;
+            window.addEventListener("resize", () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(fillWatermarks, 200); // Задержка для оптимизации
+            });
         });
     </script>
 </body>
