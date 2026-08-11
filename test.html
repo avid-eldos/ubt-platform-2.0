@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тестирование - UBT Platform</title>
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .question-card {
+            background: var(--tg-theme-bg-color, #fff);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 15px;
+            text-align: left;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 10px 14px;
+            margin-top: 8px;
+            background: rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 8px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--tg-theme-text-color, #000);
+            transition: all 0.2s;
+        }
+        .option-btn:hover {
+            background: rgba(36, 129, 204, 0.08);
+            border-color: var(--tg-theme-button-color, #2481cc);
+        }
+        .option-btn.selected {
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            border-color: var(--tg-theme-button-color, #2481cc);
+        }
+        .option-btn.correct {
+            background: #28a745 !important;
+            color: #fff !important;
+            border-color: #28a745 !important;
+        }
+        .option-btn.wrong {
+            background: #dc3545 !important;
+            color: #fff !important;
+            border-color: #dc3545 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="page-wrapper">
+            
+            <div class="card" style="text-align: center;">
+                <h2 id="test-title">Загрузка теста...</h2>
+                <p id="test-subtitle" style="color: var(--tg-theme-hint-color, #888); font-size: 13px; margin-top: 4px;">Выберите правильные варианты ответов</p>
+            </div>
+
+            <!-- Контейнер для вопросов -->
+            <div id="questions-container">
+                <p style="text-align: center; color: var(--tg-theme-hint-color);">Загружаем вопросы из базы...</p>
+            </div>
+
+            <!-- Кнопка отправки результатов -->
+            <button id="submit-btn" class="btn" style="display: none; margin-bottom: 10px;">Завершить тест</button>
+            <a href="javascript:history.back()" class="btn" style="background-color: var(--tg-theme-hint-color, #888); text-decoration: none; text-align: center;">⬅️ Назад</a>
+
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const lessonId = urlParams.get('lesson_id');
+        const subjectId = urlParams.get('subject_id');
+
+        let questionsData = [];
+        let userAnswers = {}; 
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const container = document.getElementById("questions-container");
+            const titleEl = document.getElementById("test-title");
+            const submitBtn = document.getElementById("submit-btn");
+
+            try {
+                let query = supabaseClient.from('questions').select('*');
+
+                if (lessonId) {
+                    titleEl.innerText = "Тест по теме";
+                    query = query.eq('lesson_id', lessonId);
+                } else if (subjectId) {
+                    titleEl.innerText = "Общий тест по предмету";
+                    query = query.eq('subject_id', subjectId);
+                } else {
+                    titleEl.innerText = "Ошибка";
+                    container.innerHTML = "<p style='text-align:center;'>Не указан источник теста.</p>";
+                    return;
+                }
+
+                let { data: questions, error } = await query;
+                if (error) throw error;
+
+                if (!questions || questions.length === 0) {
+                    container.innerHTML = `<div class="card"><p style="text-align: center; color: var(--tg-theme-hint-color);">Для этого раздела пока нет вопросов.</p></div>`;
+                    return;
+                }
+
+                questionsData = questions;
+                container.innerHTML = "";
+
+                // Рендерим вопросы
+                questions.forEach((q, qIndex) => {
+                    const card = document.createElement("div");
+                    card.className = "question-card";
+
+                    let optionsHtml = "";
+                    const options = Array.isArray(q.options) ? q.options : JSON.parse(q.options || "[]");
+
+                    options.forEach((opt, optIndex) => {
+                        optionsHtml += `
+                            <button class="option-btn" onclick="selectOption(${q.id}, ${optIndex}, this)">
+                                ${opt}
+                            </button>
+                        `;
+                    });
+
+                    // Отображение картинки, если она прикреплена к вопросу
+                    let imageHtml = "";
+                    if (q.image_url) {
+                        imageHtml = `
+                            <div style="margin: 10px 0; text-align: center;">
+                                <img src="${q.image_url}" alt="Иллюстрация к вопросу" style="max-width: 100%; max-height: 250px; border-radius: 8px; object-fit: contain;">
+                            </div>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div style="font-size: 12px; color: var(--tg-theme-hint-color); margin-bottom: 4px;">Вопрос ${qIndex + 1} из ${questions.length}</div>
+                        <div style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">${q.question_text}</div>
+                        ${imageHtml}
+                        <div id="options-${q.id}">${optionsHtml}</div>
+                    `;
+                    container.appendChild(card);
+                });
+
+                submitBtn.style.display = "block";
+                submitBtn.onclick = checkResults;
+
+            } catch (err) {
+                console.error("Ошибка загрузки теста:", err);
+                container.innerHTML = `<div class="card"><p style="color: red; text-align: center;">Не удалось загрузить вопросы.</p></div>`;
+            }
+        });
+
+        window.selectOption = function(questionId, optionIndex, btnElement) {
+            userAnswers[questionId] = optionIndex;
+
+            const parent = btnElement.parentElement;
+            parent.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+            btnElement.classList.add('selected');
+        };
+
+        function checkResults() {
+            let correctCount = 0;
+            let total = questionsData.length;
+
+            questionsData.forEach(q => {
+                const selected = userAnswers[q.id];
+                const optionsContainer = document.getElementById(`options-${q.id}`);
+                if (!optionsContainer) return;
+                
+                const buttons = optionsContainer.querySelectorAll('.option-btn');
+
+                buttons.forEach((btn, idx) => {
+                    btn.onclick = null; 
+                    if (idx === q.correct_index) {
+                        btn.classList.add('correct');
+                    } else if (idx === selected && idx !== q.correct_index) {
+                        btn.classList.add('wrong');
+                    }
+                });
+
+                if (selected === q.correct_index) {
+                    correctCount++;
+                }
+            });
+
+            const submitBtn = document.getElementById("submit-btn");
+            submitBtn.innerText = `Результат: ${correctCount} из ${total} верно (${Math.round((correctCount/total)*100)}%)`;
+            submitBtn.style.backgroundColor = "#4a5568";
+            submitBtn.onclick = null;
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
