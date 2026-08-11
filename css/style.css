@@ -14,11 +14,11 @@ body {
   color: var(--tg-theme-text-color);
   margin: 0;
   padding: 16px;
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none;    /* Firefox */
-  -ms-user-select: none;     /* IE/Edge */
-  user-select: none;         /* Стандартный синтаксис */
-  -webkit-touch-callout: none; /* Отключение вызова меню на iOS при долгом тапе */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .container {
@@ -46,7 +46,7 @@ body {
 
 h2 { margin-top: 0; }
 
-/* Кнопки */
+/* Универсальная кнопка */
 .btn {
   display: block;
   width: 100%;
@@ -63,10 +63,28 @@ h2 { margin-top: 0; }
   cursor: pointer;
 }
 
+/* Компактная фиксированная кнопка для списков (например, в карточках предметов) */
+.btn-compact {
+  display: inline-block;
+  width: 100px; /* Фиксированная одинаковая ширина для всех кнопок */
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+  box-sizing: border-box;
+  color: var(--tg-theme-button-text-color);
+  background-color: var(--tg-theme-button-color);
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .btn-wa { background-color: #25D366; color: #fff; }
 .btn-tg { background-color: #0088cc; color: #fff; }
 
-/* Блок новостей */
+/* Остальные стили ... */
 .news-section { margin-top: 10px; }
 .news-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
 .news-card {
@@ -80,7 +98,6 @@ h2 { margin-top: 0; }
 .news-tag { font-size: 11px; font-weight: bold; color: #ff9500; margin-bottom: 4px; }
 .news-content { font-size: 13px; line-height: 1.4; }
 
-/* Статистика */
 .stats-grid { display: flex; gap: 10px; margin-bottom: 12px; }
 .stat-box {
   flex: 1;
@@ -93,7 +110,6 @@ h2 { margin-top: 0; }
 .stat-num { display: block; font-size: 20px; font-weight: 800; color: #007aff; }
 .stat-label { font-size: 11px; color: var(--tg-theme-hint-color); }
 
-/* Лента активности */
 .activity-item {
   background: var(--tg-theme-bg-color);
   padding: 10px 12px;
@@ -114,15 +130,14 @@ h2 { margin-top: 0; }
   white-space: pre-wrap;
 }
 
-/* Контейнер для водяных знаков */
 .watermark-container {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  pointer-events: none; /* Пропускает клики сквозь себя, чтобы можно было скроллить */
-  z-index: 9999;        /* Поверх всего контента */
+  pointer-events: none;
+  z-index: 9999;
   overflow: hidden;
   display: flex;
   flex-wrap: wrap;
@@ -130,11 +145,10 @@ h2 { margin-top: 0; }
   align-content: space-around;
 }
 
-/* Элемент водяного знака */
 .watermark-item {
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.08); /* Полупрозрачный черный цвет (для светлой темы) */
-  transform: rotate(-30deg);    /* Наклон текста */
+  color: rgba(0, 0, 0, 0.08);
+  transform: rotate(-30deg);
   user-select: none;
   white-space: nowrap;
   padding: 30px;

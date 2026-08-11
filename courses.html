@@ -36,7 +36,6 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Определяем ID пользователя (так же как на главной)
         const telegramUser = tg.initDataUnsafe?.user;
         const user = (telegramUser && telegramUser.id) ? telegramUser : { id: 123456789 };
 
@@ -44,7 +43,6 @@
             const container = document.getElementById("subjects-container");
 
             try {
-                // 1. Получаем список ID предметов, к которым у юзера есть доступ
                 let { data: accesses, error: accessError } = await supabaseClient
                     .from('user_subject_access')
                     .select('subject_id')
@@ -59,7 +57,6 @@
 
                 const subjectIds = accesses.map(a => a.subject_id);
 
-                // 2. Загружаем детали только этих предметов из таблицы subjects
                 let { data: subjects, error: subjError } = await supabaseClient
                     .from('subjects')
                     .select('*')
@@ -67,7 +64,6 @@
 
                 if (subjError) throw subjError;
 
-                // 3. Рисуем карточки предметов
                 container.innerHTML = "";
                 subjects.forEach(sub => {
                     const card = document.createElement("div");
@@ -79,11 +75,11 @@
                     card.style.alignItems = "center";
 
                     card.innerHTML = `
-                        <div>
+                        <div style="flex-grow: 1; margin-right: 12px;">
                             <h3 style="margin: 0 0 4px 0; font-size: 16px;">${sub.title_ru}</h3>
                             <span style="font-size: 13px; color: var(--tg-theme-hint-color);">${sub.title_kz}</span>
                         </div>
-                        <a href="subject.html?subject_id=${sub.id}" class="btn" ...>Открыть</a>
+                        <a href="subject.html?subject_id=${sub.id}" class="btn-compact">Открыть</a>
                     `;
                     container.appendChild(card);
                 });
