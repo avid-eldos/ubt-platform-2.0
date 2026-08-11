@@ -76,5 +76,38 @@
             }
         });
     </script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const tg = window.Telegram.WebApp;
+            
+            // Получаем ID пользователя или ставим заглушку, если открыто в обычном браузере
+            let userId = "Guest";
+            let username = "";
+            
+            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                userId = tg.initDataUnsafe.user.id;
+                username = tg.initDataUnsafe.user.username ? `@${tg.initDataUnsafe.user.username}` : "";
+            }
+
+            // Создаем контейнер для водяных знаков
+            const watermarkContainer = document.createElement("div");
+            watermarkContainer.className = "watermark-container";
+
+            // Заполняем экран повторяющимся текстом (например, 20 штук)
+            // Текст содержит ID пользователя
+            const watermarkText = `ID: ${userId} ${username}`;
+            
+            for (let i = 0; i < 25; i++) {
+                const item = document.createElement("div");
+                item.className = "watermark-item";
+                item.innerText = watermarkText;
+                watermarkContainer.appendChild(item);
+            }
+
+            // Добавляем сетку водяных знаков на страницу
+            document.body.appendChild(watermarkContainer);
+        });
+    </script>
 </body>
 </html>

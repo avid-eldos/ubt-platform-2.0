@@ -113,3 +113,29 @@ h2 { margin-top: 0; }
   font-size: 12px;
   white-space: pre-wrap;
 }
+
+/* Контейнер для водяных знаков */
+.watermark-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none; /* Пропускает клики сквозь себя, чтобы можно было скроллить */
+  z-index: 9999;        /* Поверх всего контента */
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  align-content: space-around;
+}
+
+/* Элемент водяного знака */
+.watermark-item {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.08); /* Полупрозрачный черный цвет (для светлой темы) */
+  transform: rotate(-30deg);    /* Наклон текста */
+  user-select: none;
+  white-space: nowrap;
+  padding: 30px;
+}
