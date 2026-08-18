@@ -12,23 +12,19 @@
     
     <link rel="stylesheet" href="css/style.css">
     <style>
-        /* Стили для контейнера статистики */
-        .stats-banner {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin: 15px 0;
+        /* Стили отдельной карточки статистики */
+        .stats-card {
+            margin-top: 15px;
+            padding: 16px;
             text-align: center;
-            font-size: 14px;
+            font-size: 15px;
             line-height: 1.5;
-            color: #e0e0e0;
         }
-        .stats-banner strong {
+        .stats-card strong {
             color: #4caf50;
-            font-size: 16px;
+            font-size: 17px;
         }
-        .stats-banner .highlight-today {
+        .stats-card .highlight-today {
             color: #ff9800;
             font-weight: bold;
         }
@@ -39,19 +35,20 @@
     <div class="container">
         <div class="page-wrapper">
             
+            <!-- ОСНОВНАЯ КАРТОЧКА -->
             <div class="card">
                 <h2 id="welcome-title">Загрузка...</h2>
                 <p id="status-text">Проверяем данные...</p>
-
-                <!-- Контейнер статистики учеников -->
-                <div id="stats-container" class="stats-banner" style="display: none;">
-                    🎓 С нами уже <strong id="total-students-count">0</strong> учеников &bull; 
-                    <span class="highlight-today">+<span id="today-students-count">0</span> сегодня</span>
-                </div>
                 
                 <div id="action-container" style="margin-top: 20px;">
-                    <!-- Сюда динамически встанет нужная кнопка или кнопки связи -->
+                    <!-- Динамические кнопки -->
                 </div>
+            </div>
+
+            <!-- ОТДЕЛЬНЫЙ КОНТЕЙНЕР СТАТИСТИКИ НИЖЕ -->
+            <div id="stats-container" class="card stats-card" style="display: none;">
+                🎓 С нами уже <strong id="total-students-count">0</strong> учеников &bull; 
+                <span class="highlight-today">+<span id="today-students-count">0</span> сегодня</span>
             </div>
 
             <!-- Отладка -->
@@ -75,15 +72,14 @@
             username: "test_user"
         };
 
-        // Функция подсчета статистики учеников
+        // Подсчет уникальных учеников и динамическая прибавка
         async function loadStudentStats() {
-            const BASE_TOTAL = 145; // Опорное число (от 100 до 200)
-            const START_DATE = new Date('2026-08-01'); // Точка отсчета проекта
+            const BASE_TOTAL = 145; 
+            const START_DATE = new Date('2026-08-01');
 
             const now = new Date();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-            // 1. Запрашиваем все доступы из таблицы
             const { data: accesses, error } = await supabaseClient
                 .from('user_subject_access')
                 .select('user_id, granted_at');
@@ -93,7 +89,6 @@
                 return;
             }
 
-            // 2. Находим дату самого первого доступа для каждого уникального user_id
             const userFirstAccess = {};
             (accesses || []).forEach(item => {
                 const time = new Date(item.granted_at).getTime();
@@ -111,13 +106,11 @@
                 }
             });
 
-            // 3. Детерминированный расчет искусственной прибавки (3-5 человек в день)
             function getDailyFake(dateObj) {
                 const daySeed = dateObj.getFullYear() * 10000 + (dateObj.getMonth() + 1) * 100 + dateObj.getDate();
-                return 3 + (daySeed % 3); // Возвращает 3, 4 или 5
+                return 3 + (daySeed % 3);
             }
 
-            // Накрутка за прошлые дни
             let fakePastSum = 0;
             let curr = new Date(START_DATE);
             const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -129,11 +122,9 @@
 
             const fakeToday = getDailyFake(now);
 
-            // Итоговые числа
             const displayToday = realTodayUsers + fakeToday;
             const displayTotal = BASE_TOTAL + realTotalUsers + fakePastSum + fakeToday;
 
-            // Вывод в DOM
             document.getElementById("total-students-count").innerText = displayTotal;
             document.getElementById("today-students-count").innerText = displayToday;
             document.getElementById("stats-container").style.display = "block";
@@ -145,7 +136,6 @@
             const actionContainer = document.getElementById("action-container");
 
             try {
-                // 1. Автоматическая запись / проверка юзера в базе данных
                 let { data: existingUser, error: fetchError } = await supabaseClient
                     .from('users')
                     .select('*')
@@ -165,10 +155,9 @@
 
                 welcomeTitle.innerText = `Привет, ${user.first_name}! 👋`;
 
-                // 2. Подгружаем счетчик учеников
+                // Загружаем статистику в нижний отдельный блок
                 await loadStudentStats();
 
-                // 3. Проверяем доступы пользователя к предметам
                 let { data: accesses, error: accessError } = await supabaseClient
                     .from('user_subject_access')
                     .select('subject_id')
