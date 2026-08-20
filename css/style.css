@@ -153,3 +153,29 @@ h2 { margin-top: 0; }
   white-space: nowrap;
   padding: 30px;
 }
+
+/* Переключатель языка */
+.lang-switcher {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.lang-btn {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--tg-theme-text-color, #000);
+    transition: all 0.2s ease;
+}
+
+.lang-btn.active {
+    background: var(--tg-theme-button-color, #007aff);
+    color: var(--tg-theme-button-text-color, #fff);
+    border-color: var(--tg-theme-button-color, #007aff);
+}
