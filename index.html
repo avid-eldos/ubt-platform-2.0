@@ -58,7 +58,8 @@
     </div>
 
     <!-- Конфиг -->
-    <script src="js/config.js"></script>    
+    <script src="js/config.js"></script>
+    <script src="js/i18n.js"></script>  <!-- <-- ВОТ ЭТОЙ СТРОКИ НАВЕРНЯКА НЕ ХВАТАЛО -->    
     <script>
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         const tg = window.Telegram.WebApp;
