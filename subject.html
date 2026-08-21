@@ -45,9 +45,15 @@
         function updatePageTexts() {
             const isKz = currentLang === 'kz';
 
+            const titleEl = document.getElementById("subject-title");
             const btnLessons = document.getElementById("btn-lessons");
             const btnTest = document.getElementById("btn-test");
             const btnBack = document.getElementById("btn-back");
+
+            // Если страница еще в процессе загрузки, обновляем текст заголовка
+            if (titleEl && titleEl.innerText.includes("Загрузка") || titleEl.innerText.includes("Жүктелуде")) {
+                titleEl.innerText = isKz ? "Пән жүктелуде..." : "Загрузка предмета...";
+            }
 
             if (btnLessons) btnLessons.innerText = isKz ? "📖 Дәрістер мен теория" : "📖 Лекции и теория";
             if (btnTest) btnTest.innerText = isKz ? "📝 Пән бойынша жалпы тест" : "📝 Общий тест по предмету";
@@ -56,15 +62,13 @@
 
         document.addEventListener("DOMContentLoaded", async () => {
             const titleEl = document.getElementById("subject-title");
-            
             const btnLessons = document.getElementById("btn-lessons");
             const btnTest = document.getElementById("btn-test");
 
             updatePageTexts();
 
             if (!subjectId) {
-                titleEl.innerText = currentLang === 'kz' ? "Қате" : "Ошибка";
-                subtitleEl.innerText = currentLang === 'kz' ? "Пән таңдалмаған." : "Предмет не выбран.";
+                titleEl.innerText = currentLang === 'kz' ? "Қате: Пән таңдалмаған." : "Ошибка: Предмет не выбран.";
                 return;
             }
 
@@ -80,7 +84,6 @@
 
                 if (subject) {
                     titleEl.innerText = subject.title;
-                    subtitleEl.innerText = subject.title || "";
                     
                     // Настраиваем ссылки для кнопок
                     btnLessons.href = `lessons.html?subject_id=${subject.id}`;
@@ -91,8 +94,7 @@
 
             } catch (err) {
                 console.error("Ошибка загрузки предмета:", err);
-                titleEl.innerText = currentLang === 'kz' ? "Қате" : "Ошибка";
-
+                titleEl.innerText = currentLang === 'kz' ? "Қате: деректерді жүктеу мүмкін болмады." : "Ошибка: не удалось загрузить данные.";
             }
         });
     </script>
