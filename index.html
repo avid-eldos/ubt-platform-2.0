@@ -57,9 +57,9 @@
         </div>
     </div>
 
-    <!-- Конфиг -->
+    <!-- Конфиг и локализация -->
     <script src="js/config.js"></script>
-    <script src="js/i18n.js"></script>  <!-- <-- ВОТ ЭТОЙ СТРОКИ НАВЕРНЯКА НЕ ХВАТАЛО -->    
+    <script src="js/i18n.js"></script>    
     <script>
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         const tg = window.Telegram.WebApp;
@@ -72,6 +72,42 @@
             last_name: "Юзер",
             username: "test_user"
         };
+
+        let userHasAccess = false;
+
+        // Функция обновления текстов на странице при смене языка
+        function updatePageTexts() {
+            const t = translations[currentLang];
+            const welcomeTitle = document.getElementById("welcome-title");
+            const statusText = document.getElementById("status-text");
+            const actionContainer = document.getElementById("action-container");
+
+            if (welcomeTitle && user.first_name) {
+                welcomeTitle.innerText = `${t.greeting}${user.first_name}! 👋`;
+            }
+
+            if (statusText) {
+                if (userHasAccess) {
+                    statusText.innerText = currentLang === 'kz' 
+                        ? `Сізде пәндерге рұқсат бар. Сәтті дайындық! 🚀`
+                        : `У тебя открыт доступ к предметам. Отличной подготовки! 🚀`;
+                } else {
+                    statusText.innerText = t.noAccess;
+                }
+            }
+
+            // Обновляем динамические кнопки, если они уже отрисованы
+            if (actionContainer) {
+                const btnCourses = actionContainer.querySelector(".btn-courses");
+                if (btnCourses) btnCourses.innerText = t.btnOpenCourses;
+
+                const waBtn = actionContainer.querySelector(".btn-wa");
+                if (waBtn) waBtn.innerText = `💬 ${t.btnWhatsapp}`;
+
+                const tgBtn = actionContainer.querySelector(".btn-tg");
+                if (tgBtn) tgBtn.innerText = `✈️ ${t.btnTelegram}`;
+            }
+        }
 
         // Подсчет уникальных учеников и динамическая прибавка
         async function loadStudentStats() {
@@ -135,6 +171,7 @@
             const welcomeTitle = document.getElementById("welcome-title");
             const statusText = document.getElementById("status-text");
             const actionContainer = document.getElementById("action-container");
+            const t = translations[currentLang];
 
             try {
                 let { data: existingUser, error: fetchError } = await supabaseClient
@@ -154,7 +191,7 @@
                     if (insertError) throw insertError;
                 }
 
-                welcomeTitle.innerText = `Привет, ${user.first_name}! 👋`;
+                welcomeTitle.innerText = `${t.greeting}${user.first_name}! 👋`;
 
                 // Загружаем статистику в нижний отдельный блок
                 await loadStudentStats();
@@ -169,27 +206,31 @@
                 actionContainer.innerHTML = "";
 
                 if (accesses && accesses.length > 0) {
-                    statusText.innerText = `У тебя открыт доступ к предметам. Отличной подготовки! 🚀`;
+                    userHasAccess = true;
+                    statusText.innerText = currentLang === 'kz' 
+                        ? `Сізде пәндерге рұқсат бар. Сәтті дайындық! 🚀`
+                        : `У тебя открыт доступ к предметам. Отличной подготовки! 🚀`;
 
                     const btnCourses = document.createElement("a");
                     btnCourses.href = "courses.html";
-                    btnCourses.className = "btn";
-                    btnCourses.innerText = "🎓 Перейти к курсам";
+                    btnCourses.className = "btn btn-courses";
+                    btnCourses.innerText = t.btnOpenCourses;
                     actionContainer.appendChild(btnCourses);
 
                 } else {
-                    statusText.innerText = "У тебя пока нет доступа к курсам. Приобрести доступ можно, написав нам в Telegram или WhatsApp:";
+                    userHasAccess = false;
+                    statusText.innerText = t.noAccess;
 
                     const waBtn = document.createElement("a");
                     waBtn.href = `https://wa.me/${CONFIG.CONTACT_WHATSAPP}?text=Здравствуйте! Хочу приобрести доступ к платформе ЕНТ. Мой Telegram ID: ${user.id}`;
                     waBtn.className = "btn btn-wa";
-                    waBtn.innerText = "💬 Написать в WhatsApp";
+                    waBtn.innerText = `💬 ${t.btnWhatsapp}`;
                     actionContainer.appendChild(waBtn);
 
                     const tgBtn = document.createElement("a");
                     tgBtn.href = `https://t.me/${CONFIG.CONTACT_TELEGRAM}`;
                     tgBtn.className = "btn btn-tg";
-                    tgBtn.innerText = "✈️ Написать в Telegram";
+                    tgBtn.innerText = `✈️ ${t.btnTelegram}`;
                     tgBtn.style.marginTop = "10px";
                     actionContainer.appendChild(tgBtn);
                 }
