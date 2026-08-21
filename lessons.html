@@ -55,20 +55,25 @@
             
             <div class="card" style="text-align: center;">
                 <h2 id="subject-title">Загрузка тем...</h2>
-                <p style="color: var(--tg-theme-hint-color, #888); font-size: 13px; margin-top: 4px;">Изучай теорию и закрепляй тестами</p>
+                <p id="subtitle-text" style="color: var(--tg-theme-hint-color, #888); font-size: 13px; margin-top: 4px;">
+                    Изучай теорию и закрепляй тестами
+                </p>
             </div>
 
             <!-- Список лекций и тестов по темам -->
             <div class="card" id="lessons-container" style="text-align: left; padding: 10px 15px;">
-                <p style="text-align: center; color: var(--tg-theme-hint-color);">Загрузка списка лекций...</p>
+                <p id="loading-text" style="text-align: center; color: var(--tg-theme-hint-color);">Загрузка списка лекций...</p>
             </div>
 
-            <a id="back-btn" href="#" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px; text-align: center; text-decoration: none;">⬅️ Назад к предмету</a>
+            <a id="back-btn" href="#" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px; text-align: center; text-decoration: none;">
+                ⬅️ Назад к предмету
+            </a>
 
         </div>
     </div>
 
     <script src="js/config.js"></script>
+    <script src="js/i18n.js"></script>
     <script>
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         const tg = window.Telegram.WebApp;
@@ -77,14 +82,46 @@
         const urlParams = new URLSearchParams(window.location.search);
         const subjectId = urlParams.get('subject_id');
 
+        // Функция обновления текстов на странице при смене языка
+        function updatePageTexts() {
+            const isKz = currentLang === 'kz';
+            
+            const subtitleEl = document.getElementById("subtitle-text");
+            const backBtn = document.getElementById("back-btn");
+            const loadingText = document.getElementById("loading-text");
+
+            if (subtitleEl) subtitleEl.innerText = isKz ? "Теорияны оқып, тесттермен бекітіңіз" : "Изучай теорию и закрепляй тестами";
+            if (backBtn) backBtn.innerText = isKz ? "⬅️ Пәнге қайту" : "⬅️ Назад к предмету";
+            if (loadingText) loadingText.innerText = isKz ? "Дәрістер тізімі жүктелуде..." : "Загрузка списка лекций...";
+
+            // Обновляем плашки "Тема X" и кнопки внутри уже отрисованного списка
+            const themeLabels = document.querySelectorAll(".theme-label");
+            themeLabels.forEach(el => {
+                const num = el.getAttribute("data-num");
+                el.innerText = isKz ? `${num}-тақырып` : `Тема ${num}`;
+            });
+
+            const theoryBtns = document.querySelectorAll(".btn-theory-text");
+            theoryBtns.forEach(btn => {
+                btn.innerText = isKz ? "📖 Теория" : "📖 Теория";
+            });
+
+            const quizBtns = document.querySelectorAll(".btn-quiz-text");
+            quizBtns.forEach(btn => {
+                btn.innerText = isKz ? "📝 Тест" : "📝 Тест";
+            });
+        }
+
         document.addEventListener("DOMContentLoaded", async () => {
             const container = document.getElementById("lessons-container");
             const titleEl = document.getElementById("subject-title");
             const backBtn = document.getElementById("back-btn");
 
+            updatePageTexts();
+
             if (!subjectId) {
-                titleEl.innerText = "Ошибка";
-                container.innerHTML = "<p>Предмет не указан.</p>";
+                titleEl.innerText = currentLang === 'kz' ? "Қате" : "Ошибка";
+                container.innerHTML = `<p>${currentLang === 'kz' ? "Пән көрсетілмеген." : "Предмет не указан."}</p>`;
                 return;
             }
 
@@ -112,23 +149,27 @@
                 if (error) throw error;
 
                 if (!lessons || lessons.length === 0) {
-                    container.innerHTML = `<p style="text-align: center; padding: 15px; color: var(--tg-theme-hint-color);">В этом предмете пока нет лекций.</p>`;
+                    container.innerHTML = `<p style="text-align: center; padding: 15px; color: var(--tg-theme-hint-color);">${currentLang === 'kz' ? "Бұл пәнде әзірге дәрістер жоқ." : "В этом предмете пока нет лекций."}</p>`;
                     return;
                 }
 
                 container.innerHTML = "";
+                const isKz = currentLang === 'kz';
+
                 lessons.forEach((lesson, index) => {
                     const row = document.createElement("div");
                     row.className = "lesson-row";
 
+                    const themeLabelText = isKz ? `${index + 1}-тақырып` : `Тема ${index + 1}`;
+
                     row.innerHTML = `
                         <div class="lesson-info">
-                            <span style="font-size: 11px; color: var(--tg-theme-hint-color);">Тема ${index + 1}</span>
+                            <span class="theme-label" data-num="${index + 1}" style="font-size: 11px; color: var(--tg-theme-hint-color);">${themeLabelText}</span>
                             <div style="font-size: 15px; font-weight: 500; color: var(--tg-theme-text-color, #000);">${lesson.title}</div>
                         </div>
                         <div class="lesson-actions">
-                            <a href="content/${subjectId}/lesson_${lesson.id}.html" class="action-btn btn-theory">📖 Теория</a>
-                            <a href="test.html?lesson_id=${lesson.id}" class="action-btn btn-quiz">📝 Тест</a>
+                            <a href="content/${subjectId}/lesson_${lesson.id}.html" class="action-btn btn-theory btn-theory-text">📖 Теория</a>
+                            <a href="test.html?lesson_id=${lesson.id}" class="action-btn btn-quiz btn-quiz-text">📝 Тест</a>
                         </div>
                     `;
                     container.appendChild(row);
@@ -136,7 +177,7 @@
 
             } catch (err) {
                 console.error("Ошибка:", err);
-                container.innerHTML = `<p style="color: red; text-align: center;">Не удалось загрузить темы.</p>`;
+                container.innerHTML = `<p style="color: red; text-align: center;">${currentLang === 'kz' ? "Тақырыптарды жүктеу мүмкін болмады." : "Не удалось загрузить темы."}</p>`;
             }
         });
     </script>

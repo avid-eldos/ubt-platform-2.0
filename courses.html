@@ -16,8 +16,10 @@
         <div class="page-wrapper">
             
             <div class="card">
-                <h2>📚 Мои курсы</h2>
-                <p id="courses-subtitle" style="color: var(--tg-theme-hint-color, #888); margin-top: 5px;">Список предметов, к которым у тебя открыт доступ</p>
+                <h2 id="courses-title">📚 Мои курсы</h2>
+                <p id="courses-subtitle" style="color: var(--tg-theme-hint-color, #888); margin-top: 5px;">
+                    Список предметов, к которым у тебя открыт доступ
+                </p>
             </div>
 
             <!-- Список доступных предметов -->
@@ -25,12 +27,16 @@
                 <!-- Сюда динамически загрузятся карточки -->
             </div>
 
-            <a href="index.html" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px;">⬅️ На главную</a>
+            <a href="index.html" id="btn-back" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px;">
+                ⬅️ На главную
+            </a>
 
         </div>
     </div>
 
+    <!-- Конфиг и локализация -->
     <script src="js/config.js"></script>
+    <script src="js/i18n.js"></script>
     <script>
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         const tg = window.Telegram.WebApp;
@@ -39,8 +45,39 @@
         const telegramUser = tg.initDataUnsafe?.user;
         const user = (telegramUser && telegramUser.id) ? telegramUser : { id: 123456789 };
 
+        // Состояние загруженных предметов для локализации
+        let loadedSubjects = null;
+
+        // Функция обновления всех текстов на странице при смене языка
+        function updatePageTexts() {
+            const isKz = currentLang === 'kz';
+            
+            const titleEl = document.getElementById("courses-title");
+            const subtitleEl = document.getElementById("courses-subtitle");
+            const backBtn = document.getElementById("btn-back");
+
+            if (titleEl) titleEl.innerText = isKz ? "📚 Менің курстарым" : "📚 Мои курсы";
+            if (subtitleEl) subtitleEl.innerText = isKz ? "Сізде рұқсат бар пәндер тізімі" : "Список предметов, к которым у тебя открыт доступ";
+            if (backBtn) backBtn.innerText = isKz ? "⬅️ Басты бетке" : "⬅️ На главную";
+
+            // Обновляем текст на динамических кнопках предметов
+            const openBtns = document.querySelectorAll(".btn-open-subject");
+            openBtns.forEach(btn => {
+                btn.innerText = isKz ? "Ашу" : "Открыть";
+            });
+
+            // Если список пуст
+            const emptyMsg = document.getElementById("empty-msg");
+            if (emptyMsg) {
+                emptyMsg.innerText = isKz ? "Сізде әлі сатып алынған пәндер жоқ." : "У тебя пока нет купленных предметов.";
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", async () => {
             const container = document.getElementById("subjects-container");
+
+            // Применяем тексты текущего языка
+            updatePageTexts();
 
             try {
                 let { data: accesses, error: accessError } = await supabaseClient
@@ -51,7 +88,8 @@
                 if (accessError) throw accessError;
 
                 if (!accesses || accesses.length === 0) {
-                    container.innerHTML = `<div class="card"><p>У тебя пока нет купленных предметов.</p></div>`;
+                    const isKz = currentLang === 'kz';
+                    container.innerHTML = `<div class="card"><p id="empty-msg">${isKz ? "Сізде әлі сатып алынған пәндер жоқ." : "У тебя пока нет купленных предметов."}</p></div>`;
                     return;
                 }
 
@@ -64,7 +102,11 @@
 
                 if (subjError) throw subjError;
 
+                loadedSubjects = subjects;
                 container.innerHTML = "";
+                
+                const isKz = currentLang === 'kz';
+
                 subjects.forEach(sub => {
                     const card = document.createElement("div");
                     card.className = "card";
@@ -78,14 +120,15 @@
                         <div style="flex-grow: 1; margin-right: 12px;">
                             <h3 style="margin: 0 0 4px 0; font-size: 16px;">${sub.title}</h3>
                         </div>
-                        <a href="subject.html?subject_id=${sub.id}" class="btn-compact">Открыть</a>
+                        <a href="subject.html?subject_id=${sub.id}" class="btn-compact btn-open-subject">${isKz ? "Ашу" : "Открыть"}</a>
                     `;
                     container.appendChild(card);
                 });
 
             } catch (err) {
                 console.error("Ошибка загрузки предметов:", err);
-                container.innerHTML = `<div class="card" style="color: red;">Не удалось загрузить список курсов.</div>`;
+                const isKz = currentLang === 'kz';
+                container.innerHTML = `<div class="card" style="color: red;">${isKz ? "Курстар тізімін жүктеу мүмкін болмады." : "Не удалось загрузить список курсов."}</div>`;
             }
         });
     </script>

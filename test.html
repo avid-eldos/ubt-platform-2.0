@@ -78,16 +78,17 @@
 
             <div id="result-slot"></div>
             <div id="questions-container">
-                <p style="text-align:center; color:var(--tg-theme-hint-color);">Загружаем...</p>
+                <p id="loading-questions-text" style="text-align:center; color:var(--tg-theme-hint-color);">Загружаем...</p>
             </div>
 
             <button id="submit-btn" class="btn" style="display:none; margin-bottom:10px;">Завершить тест</button>
-            <a href="javascript:history.back()" class="btn"
+            <a id="back-btn" href="javascript:history.back()" class="btn"
                style="background-color:var(--tg-theme-hint-color,#888); text-decoration:none; text-align:center;">⬅️ Назад</a>
         </div>
     </div>
 
     <script src="js/config.js"></script>
+    <script src="js/i18n.js"></script>
     <script>
     const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
     const tg = window.Telegram.WebApp;
@@ -96,17 +97,13 @@
     const urlParams  = new URLSearchParams(window.location.search);
     const lessonId   = urlParams.get('lesson_id');
     const subjectId  = urlParams.get('subject_id');
-    // режим: если есть lesson_id -> лекционный, иначе общий по предмету
     const mode       = lessonId ? 'lecture' : 'full';
 
-    // 4 цвета для пар matching
     const PAIR_COLORS = ['#2481cc', '#28a745', '#e67e22', '#8e44ad'];
 
     let ATTEMPT_ID = null;
-    let QUESTIONS  = [];               // из generate_test
-    // ответы: { [position]: {answer:[...]} | {pairs:[...]} }
+    let QUESTIONS  = [];
     let ANSWERS    = {};
-    // состояние matching по позициям: { [position]: { pairs:[[l,r]...], activeLeft, activeRight } }
     let MATCH_STATE = {};
 
     function getUserId() {
@@ -117,26 +114,55 @@
         return null;
     }
 
+    function updatePageTexts() {
+        const isKz = currentLang === 'kz';
+        const titleEl = document.getElementById("test-title");
+        const subEl = document.getElementById("test-subtitle");
+        const loadingText = document.getElementById("loading-questions-text");
+        const submitBtn = document.getElementById("submit-btn");
+        const backBtn = document.getElementById("back-btn");
+
+        if (titleEl && !ATTEMPT_ID) {
+            titleEl.innerText = isKz ? "Тест жүктелуде..." : "Загрузка теста...";
+        }
+        if (subEl && !ATTEMPT_ID) {
+            subEl.innerText = isKz ? "Сұрақтар дайындалуда..." : "Готовим вопросы...";
+        }
+        if (loadingText) {
+            loadingText.innerText = isKz ? "Жүктелуде..." : "Загружаем...";
+        }
+        if (submitBtn && submitBtn.style.display !== "none" && !submitBtn.disabled) {
+            submitBtn.innerText = isKz ? "Тестті аяқтау" : "Завершить тест";
+        }
+        if (backBtn) {
+            backBtn.innerText = isKz ? "⬅️ Артқа" : "⬅️ Назад";
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
         const container = document.getElementById("questions-container");
         const titleEl   = document.getElementById("test-title");
         const subEl     = document.getElementById("test-subtitle");
         const submitBtn = document.getElementById("submit-btn");
 
+        updatePageTexts();
+
         const sid = subjectId ? parseInt(subjectId) : null;
         const lid = lessonId ? parseInt(lessonId) : null;
+        const isKz = currentLang === 'kz';
 
         if (!sid && !lid) {
-            titleEl.innerText = "Ошибка";
-            container.innerHTML = "<div class='card'><p style='text-align:center;'>Не указан источник теста.</p></div>";
+            titleEl.innerText = isKz ? "Қате" : "Ошибка";
+            container.innerHTML = `<div class='card'><p style='text-align:center;'>${isKz ? "Тест көзі көрсетілмеген." : "Не указан источник теста."}</p></div>`;
             return;
         }
 
-        titleEl.innerText = mode === 'lecture' ? "Тест по теме" : "Общий тест по предмету";
-        subEl.innerText   = "Выберите ответы и завершите тест";
+        titleEl.innerText = mode === 'lecture' 
+            ? (isKz ? "Тақырып бойынша тест" : "Тест по теме") 
+            : (isKz ? "Пән бойынша жалпы тест" : "Общий тест по предмету");
+        subEl.innerText   = isKz ? "Жауаптарды таңдап, тестті аяқтаңыз" : "Выберите ответы и завершите тест";
 
         try {
-            // вызываем серверную генерацию теста
             const { data, error } = await supabaseClient.rpc('generate_test', {
                 p_subject_id: sid,
                 p_mode:       mode,
@@ -149,29 +175,30 @@
             QUESTIONS  = data.questions || [];
 
             if (QUESTIONS.length === 0) {
-                container.innerHTML = "<div class='card'><p style='text-align:center; color:var(--tg-theme-hint-color);'>Для этого раздела пока нет вопросов.</p></div>";
+                container.innerHTML = `<div class='card'><p style='text-align:center; color:var(--tg-theme-hint-color);'>${isKz ? "Бұл бөлімде әзірге сұрақтар жоқ." : "Для этого раздела пока нет вопросов."}</p></div>`;
                 return;
             }
 
             renderQuestions(container);
             submitBtn.style.display = "block";
+            submitBtn.innerText = isKz ? "Тестті аяқтау" : "Завершить тест";
             submitBtn.onclick = submitTest;
 
         } catch (err) {
             console.error("Ошибка генерации теста:", err);
-            container.innerHTML = "<div class='card'><p style='color:red; text-align:center;'>Не удалось загрузить тест.</p></div>";
+            container.innerHTML = `<div class='card'><p style='color:red; text-align:center;'>${isKz ? "Тестті жүктеу мүмкін болмады." : "Не удалось загрузить тест."}</p></div>`;
         }
     });
 
     function renderQuestions(container) {
         container.innerHTML = "";
         let lastContext = null;
+        const isKz = currentLang === 'kz';
 
         QUESTIONS.forEach((q) => {
             const card = document.createElement("div");
             card.className = "question-card";
 
-            // контекстный блок показываем один раз перед группой
             let contextHtml = "";
             if (q.question_type === 'context' && q.context_body && q.context_body !== lastContext) {
                 contextHtml = `<div class="context-box">${escapeHtml(q.context_body)}</div>`;
@@ -188,15 +215,15 @@
             if (q.question_type === 'matching') {
                 bodyHtml = renderMatching(q);
             } else {
-                bodyHtml = renderChoice(q); // single / multiple / context
+                bodyHtml = renderChoice(q);
             }
 
             let hint = "";
-            if (q.question_type === 'multiple') hint = "Можно выбрать несколько вариантов";
-            if (q.question_type === 'matching') hint = "Свяжите пары: тапните слева, затем справа. Тап по паре — разорвать.";
+            if (q.question_type === 'multiple') hint = isKz ? "Бірнеше нұсқаны таңдауға болады" : "Можно выбрать несколько вариантов";
+            if (q.question_type === 'matching') hint = isKz ? "Жұптарды байланыстырыңыз: сол жақты, содан кейін оң жақты басыңыз." : "Свяжите пары: тапните слева, затем справа. Тап по паре — разорвать.";
 
             card.innerHTML = `
-                <div class="q-meta">Вопрос ${q.position} из ${QUESTIONS.length}</div>
+                <div class="q-meta">${isKz ? `${q.position}-сұрақ (${QUESTIONS.length} ішінен)` : `Вопрос ${q.position} из ${QUESTIONS.length}`}</div>
                 ${contextHtml}
                 <div class="q-text">${escapeHtml(q.question_text)}</div>
                 ${hint ? `<div class="q-hint">${hint}</div>` : ""}
@@ -207,7 +234,6 @@
         });
     }
 
-    // --- single / multiple / context ---
     function renderChoice(q) {
         const opts = q.options || [];
         let html = "";
@@ -219,7 +245,6 @@
         return html;
     }
 
-    // --- matching ---
     function renderMatching(q) {
         const left  = (q.matching && q.matching.left)  || [];
         const right = (q.matching && q.matching.right) || [];
@@ -238,7 +263,6 @@
                 </div>`;
     }
 
-    // ===== обработчики выбора =====
     window.onChoice = function(position, type, btn) {
         const parent = btn.parentElement;
         const text = decodeURIComponent(btn.dataset.text);
@@ -246,33 +270,28 @@
         if (type === 'multiple') {
             btn.classList.toggle('selected');
             const chosen = Array.from(parent.querySelectorAll('.option-btn.selected'))
-                                .map(b => decodeURIComponent(b.dataset.text));
+                                    .map(b => decodeURIComponent(b.dataset.text));
             ANSWERS[position] = { answer: chosen };
         } else {
-            // single / context — один выбор
             parent.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             ANSWERS[position] = { answer: [text] };
         }
     };
 
-    // ===== matching =====
     window.onMatchTap = function(position, side, cell) {
         const st = MATCH_STATE[position];
         const text = decodeURIComponent(cell.dataset.text);
 
-        // если ячейка уже в паре — разрываем пару
         if (cell.classList.contains('paired')) {
             breakPair(position, side, text);
             syncMatchAnswer(position);
             return;
         }
 
-        // выделяем активную ячейку на этой стороне
         if (side === 'left')  { st.activeLeft  = { text, el: cell }; markActive(position); }
         if (side === 'right') { st.activeRight = { text, el: cell }; markActive(position); }
 
-        // если выбраны обе стороны — создаём пару
         if (st.activeLeft && st.activeRight) {
             const colorIdx = st.pairs.length % PAIR_COLORS.length;
             const color = PAIR_COLORS[colorIdx];
@@ -293,7 +312,6 @@
     };
 
     function markActive(position) {
-        // визуально подсветить активные (уже добавляется класс в onMatchTap)
         const st = MATCH_STATE[position];
         if (st.activeLeft)  st.activeLeft.el.classList.add('active');
         if (st.activeRight) st.activeRight.el.classList.add('active');
@@ -301,13 +319,11 @@
 
     function breakPair(position, side, text) {
         const st = MATCH_STATE[position];
-        // находим пару, где эта сторона содержит text
         const idx = st.pairs.findIndex(p => (side === 'left' ? p[0] : p[1]) === text);
         if (idx === -1) return;
         const [lTxt, rTxt] = st.pairs[idx];
         st.pairs.splice(idx, 1);
 
-        // сбрасываем стиль обеих ячеек
         const body = document.getElementById(`body-${position}`);
         body.querySelectorAll('.match-cell').forEach(c => {
             const t = decodeURIComponent(c.dataset.text);
@@ -323,13 +339,12 @@
         ANSWERS[position] = { pairs: MATCH_STATE[position].pairs.slice() };
     }
 
-    // ===== отправка =====
     async function submitTest() {
         const submitBtn = document.getElementById("submit-btn");
+        const isKz = currentLang === 'kz';
         submitBtn.disabled = true;
-        submitBtn.innerText = "Проверяем...";
+        submitBtn.innerText = isKz ? "Тексеруде..." : "Проверяем...";
 
-        // собираем массив ответов с позициями
         const payload = QUESTIONS.map(q => {
             const a = ANSWERS[q.position] || {};
             if (q.question_type === 'matching') {
@@ -348,33 +363,31 @@
         } catch (err) {
             console.error("Ошибка отправки:", err);
             submitBtn.disabled = false;
-            submitBtn.innerText = "Ошибка. Повторить";
+            submitBtn.innerText = isKz ? "Қате. Қайталау" : "Ошибка. Повторить";
         }
     }
 
-    // ===== показ результата + разбор =====
     function showResults(res) {
         const submitBtn = document.getElementById("submit-btn");
         submitBtn.style.display = "none";
+        const isKz = currentLang === 'kz';
 
         const banner = document.getElementById("result-slot");
         banner.innerHTML = `
             <div class="result-banner">
-                <div class="score">${res.score} из ${res.max_score}</div>
-                <div>${res.percent}% верно</div>
+                <div class="score">${res.score} / ${res.max_score}</div>
+                <div>${res.percent}% ${isKz ? "дұрыс" : "верно"}</div>
             </div>`;
 
-        // подсвечиваем правильные/неправильные по разбору
         (res.details || []).forEach(d => {
             const body = document.getElementById(`body-${d.position}`);
             if (!body) return;
 
             if (d.question_type === 'matching') {
-                // для matching показываем текстом правильные пары ниже
                 const correctList = (d.correct || []).map(p => `${escapeHtml(p[0])} → ${escapeHtml(p[1])}`).join("<br>");
                 const note = document.createElement("div");
                 note.className = "match-legend";
-                note.innerHTML = `<b>Правильные пары:</b><br>${correctList}`;
+                note.innerHTML = `<b>${isKz ? "Дұрыс жұптар:" : "Правильные пары:"}</b><br>${correctList}`;
                 body.appendChild(note);
                 body.querySelectorAll('.match-cell').forEach(c => c.onclick = null);
             } else {

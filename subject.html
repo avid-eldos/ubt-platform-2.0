@@ -26,20 +26,34 @@
                 <a id="btn-test" href="#" class="btn" style="text-align: center; text-decoration: none; background-color: #28a745;">📝 Общий тест по предмету</a>
             </div>
 
-            <a href="courses.html" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px; text-align: center; text-decoration: none;">⬅️ К списку предметов</a>
+            <a id="btn-back" href="courses.html" class="btn" style="background-color: var(--tg-theme-hint-color, #888); margin-top: 20px; text-align: center; text-decoration: none;">⬅️ К списку предметов</a>
 
         </div>
     </div>
 
     <script src="js/config.js"></script>
+    <script src="js/i18n.js"></script>
     <script>
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Получаем ID предмета из URL (например: subject.html?subject_id=4)
+        // Получаем ID предмета из URL
         const urlParams = new URLSearchParams(window.location.search);
         const subjectId = urlParams.get('subject_id');
+
+        // Функция обновления текстов на странице при смене языка
+        function updatePageTexts() {
+            const isKz = currentLang === 'kz';
+
+            const btnLessons = document.getElementById("btn-lessons");
+            const btnTest = document.getElementById("btn-test");
+            const btnBack = document.getElementById("btn-back");
+
+            if (btnLessons) btnLessons.innerText = isKz ? "📖 Дәрістер мен теория" : "📖 Лекции и теория";
+            if (btnTest) btnTest.innerText = isKz ? "📝 Пән бойынша жалпы тест" : "📝 Общий тест по предмету";
+            if (btnBack) btnBack.innerText = isKz ? "⬅️ Пәндер тізіміне" : "⬅️ К списку предметов";
+        }
 
         document.addEventListener("DOMContentLoaded", async () => {
             const titleEl = document.getElementById("subject-title");
@@ -47,9 +61,11 @@
             const btnLessons = document.getElementById("btn-lessons");
             const btnTest = document.getElementById("btn-test");
 
+            updatePageTexts();
+
             if (!subjectId) {
-                titleEl.innerText = "Ошибка";
-                subtitleEl.innerText = "Предмет не выбран.";
+                titleEl.innerText = currentLang === 'kz' ? "Қате" : "Ошибка";
+                subtitleEl.innerText = currentLang === 'kz' ? "Пән таңдалмаған." : "Предмет не выбран.";
                 return;
             }
 
@@ -71,13 +87,13 @@
                     btnLessons.href = `lessons.html?subject_id=${subject.id}`;
                     btnTest.href = `test.html?subject_id=${subject.id}`;
                 } else {
-                    titleEl.innerText = "Предмет не найден";
+                    titleEl.innerText = currentLang === 'kz' ? "Пән табылмады" : "Предмет не найден";
                 }
 
             } catch (err) {
                 console.error("Ошибка загрузки предмета:", err);
-                titleEl.innerText = "Ошибка";
-                subtitleEl.innerText = "Не удалось загрузить данные предмета.";
+                titleEl.innerText = currentLang === 'kz' ? "Қате" : "Ошибка";
+                subtitleEl.innerText = currentLang === 'kz' ? "Пән деректерін жүктеу мүмкін болмады." : "Не удалось загрузить данные предмета.";
             }
         });
     </script>
