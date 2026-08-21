@@ -55,6 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <button class="lang-btn ${currentLang === 'kz' ? 'active' : ''}" onclick="changeLanguageAndReload('kz')">ҚАЗ</button>
     `;
 
-дю    // Вставляем самым первым элементом в обертку страницы
+    // Вставляем самым первым элементом в обертку страницы
     pageWrapper.insertBefore(switcherDiv, pageWrapper.firstChild);
 });
