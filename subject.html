@@ -56,7 +56,7 @@
 
         document.addEventListener("DOMContentLoaded", async () => {
             const titleEl = document.getElementById("subject-title");
-            const subtitleEl = document.getElementById("subject-subtitle");
+            
             const btnLessons = document.getElementById("btn-lessons");
             const btnTest = document.getElementById("btn-test");
 
@@ -92,7 +92,7 @@
             } catch (err) {
                 console.error("Ошибка загрузки предмета:", err);
                 titleEl.innerText = currentLang === 'kz' ? "Қате" : "Ошибка";
-                subtitleEl.innerText = currentLang === 'kz' ? "Пән деректерін жүктеу мүмкін болмады." : "Не удалось загрузить данные предмета.";
+
             }
         });
     </script>
