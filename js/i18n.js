@@ -36,3 +36,25 @@ function setLanguage(lang) {
         updatePageTexts();
     }
 }
+
+function changeLanguageAndReload(lang) {
+    setLanguage(lang);
+    location.reload();
+}
+
+// Автоматически добавляем переключатель языка на каждую страницу
+document.addEventListener("DOMContentLoaded", () => {
+    const pageWrapper = document.querySelector('.page-wrapper');
+    if (!pageWrapper) return;
+
+    // Создаем контейнер для кнопок
+    const switcherDiv = document.createElement('div');
+    switcherDiv.className = 'lang-switcher';
+    switcherDiv.innerHTML = `
+        <button class="lang-btn ${currentLang === 'ru' ? 'active' : ''}" onclick="changeLanguageAndReload('ru')">РУС</button>
+        <button class="lang-btn ${currentLang === 'kz' ? 'active' : ''}" onclick="changeLanguageAndReload('kz')">ҚАЗ</button>
+    `;
+
+дю    // Вставляем самым первым элементом в обертку страницы
+    pageWrapper.insertBefore(switcherDiv, pageWrapper.firstChild);
+});
